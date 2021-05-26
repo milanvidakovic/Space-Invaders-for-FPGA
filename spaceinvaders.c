@@ -3,7 +3,6 @@
 #include <sprintf.h>
 #include <consts.h>
 #include <graphics.h>
-#include <mouse.h>
 
 #define BLACK  0x0
 #define BLUE   0x1
@@ -358,7 +357,15 @@ short ship[] = {
    0x7777, 0x7777, 0x7777, 0x7000  , //4
    0x7777, 0x7777, 0x7777, 0x7000  , //5
    0x7777, 0x7777, 0x7777, 0x7000  , //6
-   0x7777, 0x7777, 0x7777, 0x7000    //7
+   0x7777, 0x7777, 0x7777, 0x7000  , //7
+   0x0000, 0x0000, 0x0000, 0x0000  , //8
+   0x0000, 0x0000, 0x0000, 0x0000  , //9
+   0x0000, 0x0000, 0x0000, 0x0000  , //10
+   0x0000, 0x0000, 0x0000, 0x0000  , //11
+   0x0000, 0x0000, 0x0000, 0x0000  , //12
+   0x0000, 0x0000, 0x0000, 0x0000  , //13
+   0x0000, 0x0000, 0x0000, 0x0000  , //14
+   0x0000, 0x0000, 0x0000, 0x0000  , //15
 };
 
 // Player eksplozija ima 2 sprite-a.
@@ -581,7 +588,7 @@ void copy_player_ship()
 {
 	short * p = (short *)sprite_addr;
 	
-	for (int i = 0; i < 8*4; i++)
+	for (int i = 0; i < 8*4*2; i++)
 	{
 		*p = ship[i];
 		p++;
@@ -2079,7 +2086,7 @@ void set_score_label_visibility(int state)
 	}
 }
 
-void switch_to_main_menu_screen()
+int switch_to_main_menu_screen()
 {
 	int state = DRAW;
 	int timer = 0;
@@ -2103,9 +2110,12 @@ void switch_to_main_menu_screen()
 		vkp = is_key_pressed();
 		if(vkp == VK_SPACE)
 		{
-			cls();
+			cls(0);
 			current_screen = GET_READY_SCREEN;
-			return;
+			return 0;
+		} else if (vkp == VK_ESC) 
+		{
+			return 1;
 		}
 
 		timer -= 2;
@@ -2113,7 +2123,7 @@ void switch_to_main_menu_screen()
 	}
 }
 
-void switch_to_get_ready_screen()
+int switch_to_get_ready_screen()
 {
 	lives = 3;
 	bonus_life_awarded = FALSE;
@@ -2144,10 +2154,13 @@ void switch_to_get_ready_screen()
 
 		if(timer_for_screen_change <= 0)
 		{
-			cls();
+			cls(0);
 			current_screen = PLAY_SCREEN;
-			return;
+			return 0;
 		}
+
+		if (is_key_pressed() == VK_ESC)
+			return 1;
 
 		timer_for_label_visibility -= 2;
 		timer_for_screen_change -= 2;
@@ -2186,7 +2199,7 @@ void fire_bullet_if_ready()
 	}
 }
 
-void switch_to_play_screen()
+int switch_to_play_screen()
 {
 	// Player vrednosti
 	player_movement_skip_frame = 3;
@@ -2196,9 +2209,8 @@ void switch_to_play_screen()
 	player_spawn_timer = 1500;
 	current_pl_expl_sprite = 0;
 
-	// Keyboard & mouse input vrednosti
+	// Keyboard  input vrednosti
 	vkp = 0, vkr = 0, old = 0;
-	short int mouse_key, mouse_x, mouse_y, key;
 
 	// Ufo alien vrednosti
 	//ufo_timer = 0;
@@ -2244,9 +2256,6 @@ void switch_to_play_screen()
 
 	calculate_timer_for_ufo_spawn();
 
-
-	init_mouse(player_ship->x, player_ship->y);
-	
 	change_sprite_color(PLAYER_SPAWN_Y, 16, 8, ship);
 	copy_player_ship();
 	player_ship->addr = 0;
@@ -2499,8 +2508,8 @@ void switch_to_play_screen()
 				{
 					delay(1000);
 					change_current_wave();
-					cls();
-					return;
+					cls(0);
+					return 0;
 				}
 
 				if(death_timer >= 600)
@@ -2816,10 +2825,9 @@ void switch_to_play_screen()
 					update_high_score_if_lower_than_score();
 					display_game_over_text();
 					delay(3000);
-					cls();
-					de_init_mouse();
+					cls(0);
 					current_screen = MAIN_MENU_SCREEN;
-					return;
+					return 0;
 				}
 			}
 			if(bonus_life_awarded == FALSE && score >= 1500)
@@ -2850,15 +2858,6 @@ void switch_to_play_screen()
 			
 			if(game_state == PLAY)
 			{
-				short int status =  mouse_status(&mouse_x, &mouse_y, &mouse_key);
-				if (status) {
-					player_ship->x = mouse_x;
-					if (player_ship->x > 224)
-						player_ship->x = 224;
-					key = mouse_key;
-
-				}
-
 				switch (vkp)
 				{
 					case VK_LEFT_ARROW:
@@ -2882,15 +2881,15 @@ void switch_to_play_screen()
 						break;
 				}
 
-				if(key == 9)
-					fire_bullet_if_ready();
 			}
 
 			switch (vkp)
 			{
-				case VK_ESC:
+				case VK_F1:
 					toggle_play_pause();
 					break;
+				case VK_ESC:
+					return 1;
 			}
 			
 		}
@@ -2905,29 +2904,31 @@ int main()
 	init_stdio();
 	video_mode(1);
 
-	cls();	
+	cls(0);	
 
 	//int start = get_millis();
 	//asm("push r1\npush r2\n push r3\nmov.w r1, 1024\nmov.w r2, 9024\nmov.w r3, 30000\nblit\npop r3\npop r2\npop r1\n");
 
 	copy_player_bullet_def();
-
+	int shouldExit = 0;
 	while(1)
 	{
 		switch(current_screen)
 		{
 			case MAIN_MENU_SCREEN:
-				switch_to_main_menu_screen();
+				shouldExit = switch_to_main_menu_screen();
 				break;
 			case GET_READY_SCREEN:
-				switch_to_get_ready_screen();
+				shouldExit = switch_to_get_ready_screen();
 				break;
 			case PLAY_SCREEN:
-				switch_to_play_screen();
+				shouldExit = switch_to_play_screen();
 				break;	
 		}
+		if (shouldExit == 1)
+			break;
 	}
-
+	cls(0);
 	return 0;
 }
 
